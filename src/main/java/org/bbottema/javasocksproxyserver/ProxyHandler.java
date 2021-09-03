@@ -1,8 +1,5 @@
 package org.bbottema.javasocksproxyserver;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -15,14 +12,16 @@ import static org.bbottema.javasocksproxyserver.Utils.getSocketInfo;
 
 public class ProxyHandler implements Runnable {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(ProxyHandler.class);
+	protected static final Logger LOGGER = LoggerFactory.getLogger(ProxyHandler.class);
 
-	private InputStream m_ClientInput = null;
-	private OutputStream m_ClientOutput = null;
-	private InputStream m_ServerInput = null;
-	private OutputStream m_ServerOutput = null;
-	private Object m_lock;
-	private Socks4Impl comm = null;
+    protected InputStream m_ClientInput = null;
+    protected OutputStream m_ClientOutput = null;
+    protected InputStream m_ServerInput = null;
+    protected OutputStream m_ServerOutput = null;
+    protected Object m_lock;
+    protected Socks4Impl comm = null;
+
+	private boolean isClosed = false;
 
 	Socket m_ClientSocket;
 	Socket m_ServerSocket = null;
@@ -34,9 +33,9 @@ public class ProxyHandler implements Runnable {
 		try {
 			m_ClientSocket.setSoTimeout(SocksConstants.DEFAULT_PROXY_TIMEOUT);
 		} catch (SocketException e) {
-			LOGGER.error("Socket Exception during seting Timeout.");
+			LOGGER.print("Socket Exception during seting Timeout.");
 		}
-		LOGGER.debug("Proxy Created.");
+		LOGGER.print("Proxy Created.");
 	}
 
 	public void setLock(Object lock) {
@@ -47,15 +46,25 @@ public class ProxyHandler implements Runnable {
 		LOGGER.debug("Proxy Started.");
 		setLock(this);
 
-		if (prepareClient()) {
-			processRelay();
-			close();
-		} else {
-			LOGGER.error("Proxy - client socket is null !");
-		}
+		try {
+            if (prepareClient()) {
+                processRelay();
+                close();
+            } else {
+                LOGGER.error("Proxy - client socket is null !");
+            }
+        }catch (Exception e) {
+            close();
+            LOGGER.error("Proxy - client socket processRelay fail!");
+        }
 	}
 
 	public void close() {
+	    if (isClosed){
+	        return;
+        }
+        isClosed = true;
+	    closeOther();
 		try {
 			if (m_ClientOutput != null) {
 				m_ClientOutput.flush();
@@ -94,6 +103,9 @@ public class ProxyHandler implements Runnable {
 
 		LOGGER.debug("Proxy Closed.");
 	}
+	public void closeOther() {
+
+    }
 
 	public void sendToClient(byte[] buffer) {
 		sendToClient(buffer, buffer.length);
@@ -161,8 +173,7 @@ public class ProxyHandler implements Runnable {
 		}
 	}
 
-	public void processRelay() {
-		try {
+	public void processRelay() throws Exception{
 			byte SOCKS_Version = getByteFromClient();
 
 			switch (SOCKS_Version) {
@@ -188,17 +199,20 @@ public class ProxyHandler implements Runnable {
 					break;
 
 				case SocksConstants.SC_BIND:
+                    if (!SocksServer.SUPPORTBIND){
+                        throw new UnsupportedOperationException("UnsupportedOperationException SC_BIND");
+                    }
 					comm.bind();
 					relay();
 					break;
 
 				case SocksConstants.SC_UDP:
+				    if (!SocksServer.SUPPORTBIND){
+				        throw new UnsupportedOperationException("UnsupportedOperationException SC_UDP");
+                    }
 					comm.udp();
 					break;
 			}
-		} catch (Exception e) {
-			LOGGER.error(e.getMessage(), e);
-		}
 	}
 
 	public byte getByteFromClient() throws Exception {

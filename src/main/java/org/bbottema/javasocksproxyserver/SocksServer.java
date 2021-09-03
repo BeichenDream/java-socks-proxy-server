@@ -1,7 +1,6 @@
 package org.bbottema.javasocksproxyserver;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 import javax.net.ServerSocketFactory;
 import java.io.IOException;
@@ -12,40 +11,48 @@ import java.net.Socket;
 public class SocksServer {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SocksServer.class);
-	
+
+    public static final boolean SUPPORTBIND = false;
+
 	protected boolean stopping = false;
 	
-	public synchronized void start(int listenPort) {
-		start(listenPort, ServerSocketFactory.getDefault());
+	public synchronized void start(int listenPort,Class<ProxyHandler> proxyHandlerClass) {
+		start(listenPort, ServerSocketFactory.getDefault(),proxyHandlerClass);
 	}
 	
-	public synchronized void start(int listenPort, ServerSocketFactory serverSocketFactory) {
+	public synchronized void start(int listenPort, ServerSocketFactory serverSocketFactory,Class<ProxyHandler> proxyHandlerClass) {
 		this.stopping = false;
-		new Thread(new ServerProcess(listenPort, serverSocketFactory)).start();
+		new Thread(new ServerProcess(listenPort, serverSocketFactory,proxyHandlerClass)).start();
 	}
 
 	public synchronized void stop() {
 		stopping = true;
 	}
+
+	public boolean isAlive(){
+	    return !stopping;
+    }
 	
 	private class ServerProcess implements Runnable {
 		
 		protected final int port;
 		private final ServerSocketFactory serverSocketFactory;
+		protected final Class<ProxyHandler> proxyHandlerClass;
 		
-		public ServerProcess(int port, ServerSocketFactory serverSocketFactory) {
+		public ServerProcess(int port, ServerSocketFactory serverSocketFactory,Class<ProxyHandler> proxyHandlerClass) {
 			this.port = port;
 			this.serverSocketFactory = serverSocketFactory;
+			this.proxyHandlerClass = proxyHandlerClass;
 		}
 		
 		@Override
 		public void run() {
-			LOGGER.debug("SOCKS server started...");
+			LOGGER.print("SOCKS server started...");
 			try {
 				handleClients(port);
-				LOGGER.debug("SOCKS server stopped...");
+				LOGGER.print("SOCKS server stopped...");
 			} catch (IOException e) {
-				LOGGER.debug("SOCKS server crashed...");
+				LOGGER.print("SOCKS server crashed...");
 				Thread.currentThread().interrupt();
 			}
 		}
@@ -54,7 +61,7 @@ public class SocksServer {
 			final ServerSocket listenSocket = serverSocketFactory.createServerSocket(port);
 			listenSocket.setSoTimeout(SocksConstants.LISTEN_TIMEOUT);
 			
-			LOGGER.debug("SOCKS server listening at port: " + listenSocket.getLocalPort());
+			LOGGER.print("SOCKS server listening at port: " + listenSocket.getLocalPort());
 
 			while (true) {
 				synchronized (SocksServer.this) {
@@ -76,8 +83,8 @@ public class SocksServer {
 			try {
 				final Socket clientSocket = listenSocket.accept();
 				clientSocket.setSoTimeout(SocksConstants.DEFAULT_SERVER_TIMEOUT);
-				LOGGER.debug("Connection from : " + Utils.getSocketInfo(clientSocket));
-				new Thread(new ProxyHandler(clientSocket)).start();
+				LOGGER.print("Connection from : " + Utils.getSocketInfo(clientSocket));
+				new Thread(proxyHandlerClass.getConstructor(Socket.class).newInstance(clientSocket)).start();
 			} catch (InterruptedIOException e) {
 				//	This exception is thrown when accept timeout is expired
 			} catch (Exception e) {

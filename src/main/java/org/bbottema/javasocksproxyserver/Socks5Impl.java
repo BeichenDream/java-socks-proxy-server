@@ -1,10 +1,5 @@
 package org.bbottema.javasocksproxyserver;
 
-import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.DatagramPacket;
@@ -49,7 +44,7 @@ public class Socks5Impl extends Socks4Impl {
 		return 04;
 	}
 
-	@Nullable
+	
 	public InetAddress calcInetAddress(byte AType, byte[] addr) {
 		InetAddress IA;
 
@@ -285,7 +280,7 @@ public class Socks5Impl extends Socks4Impl {
 		DGPack = new DatagramPacket(m_Parent.m_Buffer, SocksConstants.DEFAULT_BUF_SIZE);
 	}
 
-	@NotNull
+	
 	private byte[] addDgpHead(byte[] buffer) {
 		byte[] IABuf = DGPack.getAddress().getAddress();
 		int DGport = DGPack.getPort();
@@ -307,7 +302,7 @@ public class Socks5Impl extends Socks4Impl {
 		return UB;
 	}
 
-	@Nullable
+	
 	private byte[] clearDgpHead(byte[] buffer) {
 		final int IAlen;
 		//int	bl	= Buffer.length;
