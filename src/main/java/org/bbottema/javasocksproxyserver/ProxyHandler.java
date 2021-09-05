@@ -23,7 +23,7 @@ public class ProxyHandler implements Runnable {
     protected Socks4Impl comm = null;
     protected HashMap environment = null;
 
-	private boolean isClosed = false;
+    protected boolean isClosed = false;
 
 	Socket m_ClientSocket;
 	Socket m_ServerSocket = null;
