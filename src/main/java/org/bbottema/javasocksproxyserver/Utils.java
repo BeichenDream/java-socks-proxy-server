@@ -52,7 +52,7 @@ public final class Utils {
 	public static String iP2Str(InetAddress IP) {
 		return IP == null
 				? "NA/NA"
-				: format("%s/%s", IP.getHostName(), IP.getHostAddress());
+				: format("%s/%s", "NA/NA", IP.getHostAddress());
 	}
 
 	

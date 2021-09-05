@@ -17,12 +17,16 @@ public class SocksServer {
 
 	protected boolean stopping = false;
 	protected HashMap env;
+
+    {
+        env = new HashMap();
+    }
 	
 	public synchronized void start(int listenPort,Class proxyHandlerClass) {
-		start(listenPort, ServerSocketFactory.getDefault(),new HashMap(),proxyHandlerClass);
+		start(listenPort, ServerSocketFactory.getDefault(),proxyHandlerClass);
 	}
 	
-	public synchronized void start(int listenPort, ServerSocketFactory serverSocketFactory,HashMap env,Class proxyHandlerClass) {
+	public synchronized void start(int listenPort, ServerSocketFactory serverSocketFactory,Class proxyHandlerClass) {
 		this.stopping = false;
 		this.env = env;
 		new Thread(new ServerProcess(listenPort, serverSocketFactory,env,proxyHandlerClass)).start();

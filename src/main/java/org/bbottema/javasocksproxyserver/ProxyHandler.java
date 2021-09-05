@@ -69,7 +69,7 @@ public class ProxyHandler implements Runnable {
         }
 	}
 
-	public void close() {
+	public synchronized void close() {
 	    if (isClosed){
 	        return;
         }
@@ -240,88 +240,62 @@ public class ProxyHandler implements Runnable {
 	}
 
 	public void relay() {
-		boolean isActive = true;
-
-		while (isActive) {
-
-			//---> Check for client data <---
-
-			int dlen = checkClientData();
-
-			if (dlen < 0) {
-				isActive = false;
-			}
-			if (dlen > 0) {
-				logData(dlen, "Cli data");
-				sendToServer(m_Buffer, dlen);
-			}
-
-			//---> Check for Server data <---
-			dlen = checkServerData();
-
-			if (dlen < 0) isActive = false;
-			if (dlen > 0) {
-				logData(dlen, "Srv data");
-				sendToClient(m_Buffer, dlen);
-			}
-
-			Thread.yield();
-		}
+        try {
+            m_ClientSocket.setSoTimeout(0);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+        new Thread(this::relayServer).start();
+        int readNumber = 0;
+        byte[] buffer = new byte[4096];
+		try{
+            while ((readNumber=(m_ClientInput.read(buffer)))>0) {
+                sendToServer(buffer,readNumber);
+            }
+        }catch(Exception e){
+		    close();
+        }
 	}
+    public void relayServer() {
+        int readNumber = 0;
+        byte[] buffer = new byte[4096];
+        try{
+            while ((readNumber=(m_ServerInput.read(buffer)))>0) {
+                sendToClient(buffer,readNumber);
+            }
+        }catch(Exception e){
+            close();
+        }
+    }
+    public int checkClientData() {
+        synchronized (m_lock) {
+            //	The client side is not opened.
+            if (m_ClientInput == null) return -1;
 
-	public int checkClientData() {
-		synchronized (m_lock) {
-			//	The client side is not opened.
-			if (m_ClientInput == null) return -1;
+            int dlen;
 
-			int dlen;
+            try {
+                dlen = m_ClientInput.read(m_Buffer, 0, SocksConstants.DEFAULT_BUF_SIZE);
+            } catch (InterruptedIOException e) {
+                return 0;
+            } catch (IOException e) {
+                LOGGER.debug("Client connection Closed!");
+                close();    //	Close the server on this exception
+                return -1;
+            }
 
-			try {
-				dlen = m_ClientInput.read(m_Buffer, 0, SocksConstants.DEFAULT_BUF_SIZE);
-			} catch (InterruptedIOException e) {
-				return 0;
-			} catch (IOException e) {
-				LOGGER.debug("Client connection Closed!");
-				close();    //	Close the server on this exception
-				return -1;
-			}
+            if (dlen < 0) close();
 
-			if (dlen < 0) close();
+            return dlen;
+        }
+    }
 
-			return dlen;
-		}
-	}
 
-	public int checkServerData() {
-		synchronized (m_lock) {
-			//	The client side is not opened.
-			if (m_ServerInput == null) return -1;
-
-			int dlen;
-
-			try {
-				dlen = m_ServerInput.read(m_Buffer, 0, SocksConstants.DEFAULT_BUF_SIZE);
-			} catch (InterruptedIOException e) {
-				return 0;
-			} catch (IOException e) {
-				LOGGER.debug("Server connection Closed!");
-				close();    //	Close the server on this exception
-				return -1;
-			}
-
-			if (dlen < 0) {
-				close();
-			}
-
-			return dlen;
-		}
-	}
-
-	private void logData(final int traffic, final String dataSource) {
+	protected void logData(final int traffic, final String dataSource) {
 		LOGGER.debug(format("%s : %s >> <%s/%s:%d> : %d bytes.",
 				dataSource,
 				getSocketInfo(m_ClientSocket),
-				comm.m_ServerIP.getHostName(),
+				"NA",
 				comm.m_ServerIP.getHostAddress(),
 				comm.m_nServerPort, traffic));
 	}
