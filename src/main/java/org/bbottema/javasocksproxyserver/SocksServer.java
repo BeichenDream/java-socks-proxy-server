@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
 
 public class SocksServer {
 
@@ -15,17 +16,23 @@ public class SocksServer {
     public static final boolean SUPPORTBIND = false;
 
 	protected boolean stopping = false;
+	protected HashMap env;
 	
 	public synchronized void start(int listenPort,Class<ProxyHandler> proxyHandlerClass) {
-		start(listenPort, ServerSocketFactory.getDefault(),proxyHandlerClass);
+		start(listenPort, ServerSocketFactory.getDefault(),new HashMap(),proxyHandlerClass);
 	}
 	
-	public synchronized void start(int listenPort, ServerSocketFactory serverSocketFactory,Class<ProxyHandler> proxyHandlerClass) {
+	public synchronized void start(int listenPort, ServerSocketFactory serverSocketFactory,HashMap env,Class<ProxyHandler> proxyHandlerClass) {
 		this.stopping = false;
-		new Thread(new ServerProcess(listenPort, serverSocketFactory,proxyHandlerClass)).start();
+		this.env = env;
+		new Thread(new ServerProcess(listenPort, serverSocketFactory,env,proxyHandlerClass)).start();
 	}
 
-	public synchronized void stop() {
+    public HashMap getEnv() {
+        return env;
+    }
+
+    public synchronized void stop() {
 		stopping = true;
 	}
 
@@ -38,11 +45,13 @@ public class SocksServer {
 		protected final int port;
 		private final ServerSocketFactory serverSocketFactory;
 		protected final Class<ProxyHandler> proxyHandlerClass;
+		protected final HashMap environment;
 		
-		public ServerProcess(int port, ServerSocketFactory serverSocketFactory,Class<ProxyHandler> proxyHandlerClass) {
+		public ServerProcess(int port, ServerSocketFactory serverSocketFactory, HashMap environment, Class<ProxyHandler> proxyHandlerClass) {
 			this.port = port;
 			this.serverSocketFactory = serverSocketFactory;
 			this.proxyHandlerClass = proxyHandlerClass;
+			this.environment=environment;
 		}
 		
 		@Override
@@ -84,7 +93,9 @@ public class SocksServer {
 				final Socket clientSocket = listenSocket.accept();
 				clientSocket.setSoTimeout(SocksConstants.DEFAULT_SERVER_TIMEOUT);
 				LOGGER.print("Connection from : " + Utils.getSocketInfo(clientSocket));
-				new Thread(proxyHandlerClass.getConstructor(Socket.class).newInstance(clientSocket)).start();
+				ProxyHandler proxyHandler = proxyHandlerClass.getConstructor(Socket.class).newInstance(clientSocket);
+                proxyHandler.setEnvironment(environment);
+				new Thread(proxyHandler).start();
 			} catch (InterruptedIOException e) {
 				//	This exception is thrown when accept timeout is expired
 			} catch (Exception e) {

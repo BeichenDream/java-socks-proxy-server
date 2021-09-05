@@ -6,6 +6,7 @@ import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.HashMap;
 
 import static java.lang.String.format;
 import static org.bbottema.javasocksproxyserver.Utils.getSocketInfo;
@@ -20,6 +21,7 @@ public class ProxyHandler implements Runnable {
     protected OutputStream m_ServerOutput = null;
     protected Object m_lock;
     protected Socks4Impl comm = null;
+    protected HashMap environment = null;
 
 	private boolean isClosed = false;
 
@@ -38,7 +40,15 @@ public class ProxyHandler implements Runnable {
 		LOGGER.print("Proxy Created.");
 	}
 
-	public void setLock(Object lock) {
+    public HashMap getEnvironment() {
+        return environment;
+    }
+
+    public void setEnvironment(HashMap environment) {
+        this.environment = environment;
+    }
+
+    public void setLock(Object lock) {
 		this.m_lock = lock;
 	}
 
