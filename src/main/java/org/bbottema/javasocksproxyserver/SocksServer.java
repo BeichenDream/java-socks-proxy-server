@@ -18,11 +18,11 @@ public class SocksServer {
 	protected boolean stopping = false;
 	protected HashMap env;
 	
-	public synchronized void start(int listenPort,Class<ProxyHandler> proxyHandlerClass) {
+	public synchronized void start(int listenPort,Class proxyHandlerClass) {
 		start(listenPort, ServerSocketFactory.getDefault(),new HashMap(),proxyHandlerClass);
 	}
 	
-	public synchronized void start(int listenPort, ServerSocketFactory serverSocketFactory,HashMap env,Class<ProxyHandler> proxyHandlerClass) {
+	public synchronized void start(int listenPort, ServerSocketFactory serverSocketFactory,HashMap env,Class proxyHandlerClass) {
 		this.stopping = false;
 		this.env = env;
 		new Thread(new ServerProcess(listenPort, serverSocketFactory,env,proxyHandlerClass)).start();
@@ -44,10 +44,10 @@ public class SocksServer {
 		
 		protected final int port;
 		private final ServerSocketFactory serverSocketFactory;
-		protected final Class<ProxyHandler> proxyHandlerClass;
+		protected final Class proxyHandlerClass;
 		protected final HashMap environment;
 		
-		public ServerProcess(int port, ServerSocketFactory serverSocketFactory, HashMap environment, Class<ProxyHandler> proxyHandlerClass) {
+		public ServerProcess(int port, ServerSocketFactory serverSocketFactory, HashMap environment, Class proxyHandlerClass) {
 			this.port = port;
 			this.serverSocketFactory = serverSocketFactory;
 			this.proxyHandlerClass = proxyHandlerClass;
@@ -93,7 +93,7 @@ public class SocksServer {
 				final Socket clientSocket = listenSocket.accept();
 				clientSocket.setSoTimeout(SocksConstants.DEFAULT_SERVER_TIMEOUT);
 				LOGGER.print("Connection from : " + Utils.getSocketInfo(clientSocket));
-				ProxyHandler proxyHandler = proxyHandlerClass.getConstructor(Socket.class).newInstance(clientSocket);
+				ProxyHandler proxyHandler = (ProxyHandler) proxyHandlerClass.getConstructor(Socket.class).newInstance(clientSocket);
                 proxyHandler.setEnvironment(environment);
 				new Thread(proxyHandler).start();
 			} catch (InterruptedIOException e) {
